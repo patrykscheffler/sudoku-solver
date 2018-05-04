@@ -57,9 +57,9 @@
 			isa = PBXGroup;
 			children = (
 				27DC44F7209C917400D346A9 /* AppDelegate.swift */,
-				27DC44F9209C917400D346A9 /* art.scnassets */,
 				27DC44FB209C917400D346A9 /* ViewController.swift */,
 				27DC44FD209C917400D346A9 /* Main.storyboard */,
+				27DC44F9209C917400D346A9 /* art.scnassets */,
 				27DC4500209C917900D346A9 /* Assets.xcassets */,
 				27DC4502209C917900D346A9 /* LaunchScreen.storyboard */,
 				27DC4505209C917900D346A9 /* Info.plist */,
@@ -285,6 +285,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6J4ZDN9NKH;
 				INFOPLIST_FILE = "sudoku-solver/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -302,6 +303,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6J4ZDN9NKH;
 				INFOPLIST_FILE = "sudoku-solver/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
