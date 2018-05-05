@@ -10,13 +10,6 @@ import Foundation
 import ARKit
 import Vision
 
-enum RectangleCorners {
-    case topLeft(topLeft: SCNVector3, topRight: SCNVector3, bottomLeft: SCNVector3)
-    case topRight(topLeft: SCNVector3, topRight: SCNVector3, bottomRight: SCNVector3)
-    case bottomLeft(topLeft: SCNVector3, bottomLeft: SCNVector3, bottomRight: SCNVector3)
-    case bottomRight(topRight: SCNVector3, bottomLeft: SCNVector3, bottomRight: SCNVector3)
-}
-
 class PlaneRectangle: NSObject {
     var anchor: ARPlaneAnchor
     var position: SCNVector3
@@ -128,6 +121,13 @@ fileprivate func getCorners(for rectangle: VNRectangleObservation, in sceneView:
     
     // No set of 3 points have a common anchor, so a rectangle cannot be found on a plane
     return nil
+}
+
+enum RectangleCorners {
+    case topLeft(topLeft: SCNVector3, topRight: SCNVector3, bottomLeft: SCNVector3)
+    case topRight(topLeft: SCNVector3, topRight: SCNVector3, bottomRight: SCNVector3)
+    case bottomLeft(topLeft: SCNVector3, bottomLeft: SCNVector3, bottomRight: SCNVector3)
+    case bottomRight(topRight: SCNVector3, bottomLeft: SCNVector3, bottomRight: SCNVector3)
 }
 
 extension RectangleCorners {

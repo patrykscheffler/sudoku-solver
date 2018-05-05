@@ -108,6 +108,10 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             if let hitObject = hitList.first {
                 let node = hitObject.node
                 
+                node.enumerateChildNodes { (childrenNode, stop) -> Void in
+                    childrenNode.removeFromParentNode()
+                }
+                
                 node.removeFromParentNode()
             }
             
@@ -186,12 +190,15 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     private func addPlaneRect(for observedRect: VNRectangleObservation) {
         // Convert to 3D coordinates
         guard let planeRectangle = PlaneRectangle(for: observedRect, in: sceneView) else {
-            print("No plane for this rectangle")
             return
         }
         
-        let rectangleNode = RectangleNode(planeRectangle)
-        sceneView.scene.rootNode.addChildNode(rectangleNode)
+        let boardNode = RectangleNode(planeRectangle)
+        let x = boardNode.position.x
+        let y = boardNode.position.y
+        let z = boardNode.position.z
+        
+        let _ = SudokuScene(sceneView.scene, boardNode, planeRectangle.size, planeRectangle.orientation, x, y, z)
     }
     
     private func drawPolygon(_ points: [CGPoint], color: UIColor) -> CAShapeLayer {
