@@ -23,7 +23,8 @@ class RectangleNode: SCNNode {
         super.init()
         
         // Create the 3D plane geometry with the dimensions calculated from corners
-        let planeGeometry = SCNPlane(width: width * 1.1, height: height * 1.1)
+        let length = max(width, height)
+        let planeGeometry = SCNPlane(width: length, height: length)
         let rectNode = SCNNode(geometry: planeGeometry)
         
         // Planes in SceneKit are vertical by default so we need to rotate
