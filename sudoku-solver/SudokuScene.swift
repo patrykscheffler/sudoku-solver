@@ -33,6 +33,7 @@ class SudokuScene {
         self.z = z
         
         createBoard()
+        showBoard()
         scene.rootNode.addChildNode(self.board)
     }
     
@@ -58,6 +59,28 @@ class SudokuScene {
         }
     }
     
+    private func showBoard() {
+        let width = self.size.width
+        let height = self.size.height
+        let length = max(width, height)
+        
+        addNumber(to: self.board, value: "1", 0, 0, Float(length / 9))
+        addNumber(to: self.board, value: "2", 1, 1, Float(length / 9))
+        addNumber(to: self.board, value: "3", 8, 8, Float(length / 9))
+    }
+    
+    private func addNumber(to node: SCNNode, value: String, _ x: Float, _ y: Float, _ cell: Float) {
+        var translate = SCNMatrix4MakeTranslation(cell * (x - 4.5), cell * (8 - y - 4.5), 0)
+        translate = SCNMatrix4Translate(translate, cell / 5, 0, 0)
+        let scale = SCNMatrix4Scale(translate, 0.0004, 0.0004, 0.0004)
+        var transform = SCNMatrix4MakeRotation(-Float.pi / 2.0, 1.0, 0.0, 0.0)
+        transform = SCNMatrix4Rotate(transform, self.orientation, 0, 1, 0)
+        transform = SCNMatrix4Rotate(transform, -Float.pi / 2.0, 0, 3, 0)
+        let node = createNode(text(value), SCNMatrix4Mult(scale, transform), SudokuScene.textColor)
+        animate(node, "opacity", from: 0, to: 1, during: 2)
+        self.board.addChildNode(node)
+    }
+    
     private func addLine(to node: SCNNode, _ w: Float, _ h: Float, _ l: Float, _ x: Float, _ y: Float, _ cell: Float, _ padding: Float, _ color: UIColor) {
         let line = SCNBox(width: cg(w), height: cg(h), length: cg(l), chamferRadius: 0)
         var translate = SCNMatrix4MakeTranslation(cell * (x - padding), cell * (y - padding), 0)
@@ -78,6 +101,22 @@ class SudokuScene {
         node.transform = matrix
         
         return node
+    }
+    
+    private func text(_ string: String) -> SCNText {
+        let text = SCNText(string: string, extrusionDepth: 1)
+        text.font = UIFont.systemFont(ofSize: 20)
+        return text
+    }
+    
+    private func animate(_ node: SCNNode, _ path: String, from: Any, to: Any, during: CFTimeInterval) {
+        let animation = CABasicAnimation(keyPath: path)
+        animation.fromValue = from
+        animation.toValue = to
+        animation.duration = during
+        animation.fillMode = kCAFillModeForwards
+        animation.isRemovedOnCompletion = false
+        node.addAnimation(animation, forKey: nil)
     }
     
     private func translate(_ x: Float, _ y: Float, _ z: Float = 0) -> SCNMatrix4 {
