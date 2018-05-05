@@ -197,8 +197,8 @@ extension RectangleCorners {
             switch self {
             case .topLeft(let left, let right, _),
                  .topRight(let left, let right, _),
-                 .bottomLeft(_, let left, let right),
-                 .bottomRight(_, let left, let right):
+                 .bottomLeft(let left, let right, _),
+                 .bottomRight(let left, let right, _):
                 let distX = right.x - left.x
                 let distZ = right.z - left.z
                 return -atan(distZ / distX)

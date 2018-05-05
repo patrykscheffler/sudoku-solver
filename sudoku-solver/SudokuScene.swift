@@ -64,18 +64,21 @@ class SudokuScene {
         let height = self.size.height
         let length = max(width, height)
         
-        addNumber(to: self.board, value: "1", 0, 0, Float(length / 9))
-        addNumber(to: self.board, value: "2", 1, 1, Float(length / 9))
-        addNumber(to: self.board, value: "3", 8, 8, Float(length / 9))
+        
+        for i in 0...8 {
+            for j in 0...8 {
+                addNumber(to: self.board, value: "\(arc4random_uniform(UInt32(10)))", Float(i), Float(j), Float(length / 9))
+            }
+        }
     }
     
     private func addNumber(to node: SCNNode, value: String, _ x: Float, _ y: Float, _ cell: Float) {
         var translate = SCNMatrix4MakeTranslation(cell * (x - 4.5), cell * (8 - y - 4.5), 0)
-        translate = SCNMatrix4Translate(translate, cell / 5, 0, 0)
-        let scale = SCNMatrix4Scale(translate, 0.0004, 0.0004, 0.0004)
+        translate = SCNMatrix4Translate(translate, cell / 3, cell / 9, 0)
+        let scale = SCNMatrix4Scale(translate, cell / 30, cell / 30, cell / 30)
         var transform = SCNMatrix4MakeRotation(-Float.pi / 2.0, 1.0, 0.0, 0.0)
         transform = SCNMatrix4Rotate(transform, self.orientation, 0, 1, 0)
-        transform = SCNMatrix4Rotate(transform, -Float.pi / 2.0, 0, 3, 0)
+        transform = SCNMatrix4Rotate(transform, Float.pi / 2.0, 0, 3, 0)
         let node = createNode(text(value), SCNMatrix4Mult(scale, transform), SudokuScene.textColor)
         animate(node, "opacity", from: 0, to: 1, during: 2)
         self.board.addChildNode(node)
