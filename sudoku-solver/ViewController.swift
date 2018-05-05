@@ -107,9 +107,10 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             
             if let hitObject = hitList.first {
                 let node = hitObject.node
+                let parentNode = node.parent
                 
-                node.enumerateChildNodes { (childrenNode, stop) -> Void in
-                    childrenNode.removeFromParentNode()
+                parentNode?.enumerateChildNodes { (childNode, stop) -> Void in
+                    childNode.removeFromParentNode()
                 }
                 
                 node.removeFromParentNode()

@@ -43,7 +43,7 @@ class SudokuScene {
         
         for i in 0...9 {
             if i % 3 == 0 {
-                addLine(to: self.board, 0.0003, Float(length), 0.0003, Float(i), 0, Float(length / 9), 4.5, SudokuScene.borderColor)
+                addLine(to: self.board, 0.0005, Float(length), 0.001, Float(i), 0, Float(length / 9), 4.5, SudokuScene.borderColor)
             } else {
                 addLine(to: self.board, 0.0001, Float(length), 0.0001, Float(i), 0, Float(length / 9), 4.5, SudokuScene.lightBorderColor)
             }
@@ -51,7 +51,7 @@ class SudokuScene {
         }
         for i in 0...9 {
             if i % 3 == 0 {
-                addLine(to: self.board, Float(length), 0.0003, 0.0003, 0, Float(i), Float(length / 9), 4.5, SudokuScene.borderColor)
+                addLine(to: self.board, Float(length), 0.0005, 0.001, 0, Float(i), Float(length / 9), 4.5, SudokuScene.borderColor)
             } else {
                 addLine(to: self.board, Float(length), 0.0001, 0.0001, 0, Float(i), Float(length / 9), 4.5, SudokuScene.lightBorderColor)
             }
@@ -59,8 +59,8 @@ class SudokuScene {
     }
     
     private func addLine(to node: SCNNode, _ w: Float, _ h: Float, _ l: Float, _ x: Float, _ y: Float, _ cell: Float, _ padding: Float, _ color: UIColor) {
-        let line = SCNBox(width: cg(w + l * 6), height: cg(h + l * 6), length: cg(l), chamferRadius: 0)
-        var translate = SCNMatrix4MakeTranslation(cell * (x - padding), cell * (y - padding), 0.1 * cell)
+        let line = SCNBox(width: cg(w), height: cg(h), length: cg(l), chamferRadius: 0)
+        var translate = SCNMatrix4MakeTranslation(cell * (x - padding), cell * (y - padding), 0)
         translate = SCNMatrix4Translate(translate, w / 2, h / 2, 0)
         var transform = SCNMatrix4MakeRotation(-Float.pi / 2.0, 1.0, 0.0, 0.0)
         transform = SCNMatrix4Rotate(transform, self.orientation, 0, 1, 0)
