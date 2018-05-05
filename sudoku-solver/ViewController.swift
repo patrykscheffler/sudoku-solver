@@ -99,6 +99,21 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         surfaceNodes.removeValue(forKey: anchor)
     }
     
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if let touch = touches.first {
+            let location = touch.location(in: sceneView)
+            
+            let hitList = sceneView.hitTest(location, options: nil)
+            
+            if let hitObject = hitList.first {
+                let node = hitObject.node
+                
+                node.removeFromParentNode()
+            }
+            
+        }
+    }
+    
     private func findRectangle(frame currentFrame: ARFrame) {
         DispatchQueue.global(qos: .background).async {
             let request = VNDetectRectanglesRequest(completionHandler: { (request, error) in
@@ -106,25 +121,25 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                 DispatchQueue.main.async {
                     guard let observations = request.results as? [VNRectangleObservation],
                         let _ = observations.first else {
-                            print("No results")
+                            // print("No results")
                             return
                     }
                     
-                    if observations.count < 3 {
-                        return
-                    }
-                    
+                    if observations.count < 3 { return }
                     let isSudoku = self.checkSudoku(observations)
-                    
-                    if !isSudoku {
-                        return
-                    }
-                    
+                    if !isSudoku { return }
                     guard let selectedRect = observations.first else {
                         return
                     }
                     
-                    self.addPlaneRect(for: selectedRect)
+                    let centerX = selectedRect.topLeft.x + (selectedRect.bottomRight.x - selectedRect.topLeft.x) / 2
+                    let centerY = selectedRect.topLeft.y + (selectedRect.bottomRight.y - selectedRect.topLeft.y) / 2
+                    let centerPoint = CGPoint(x: centerX, y: centerY)
+                    let hitList = self.sceneView.hitTest(self.sceneView.convertFromCamera(centerPoint), options: nil)
+                    
+                    if hitList.count == 0 {
+                        self.addPlaneRect(for: selectedRect)
+                    }
                 }
             })
             
