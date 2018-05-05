@@ -16,7 +16,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     @IBOutlet var sceneView: ARSCNView!
     
     private var searchingForRectangles = true
-    private var outlineLayers: [CAShapeLayer]?
+    private var surfaceNodes = [ARPlaneAnchor:SurfaceNode]()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -41,6 +41,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         
         // Create a session configuration
         let configuration = ARWorldTrackingConfiguration()
+        configuration.planeDetection = .horizontal
 
         // Run the view's session
         sceneView.session.run(configuration)
@@ -55,7 +56,6 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
-        // Release any cached data, images, etc that aren't in use.
     }
     
     func session(_ session: ARSession, didUpdate frame: ARFrame) {
@@ -68,14 +68,35 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         }
     }
     
-    private func removeOutlines() {
-        if let layers = self.outlineLayers {
-            for layer in layers {
-                layer.removeFromSuperlayer()
-            }
-            
-            self.outlineLayers = nil
+    func renderer(_ renderer: SCNSceneRenderer, didAdd node: SCNNode, for anchor: ARAnchor) {
+        guard let anchor = anchor as? ARPlaneAnchor else {
+            return
         }
+        
+        let surface = SurfaceNode(anchor: anchor)
+        surfaceNodes[anchor] = surface
+        node.addChildNode(surface)
+    }
+    
+    func renderer(_ renderer: SCNSceneRenderer, didUpdate node: SCNNode, for anchor: ARAnchor) {
+        // See if this is a plane we are currently rendering
+        guard let anchor = anchor as? ARPlaneAnchor,
+            let surface = surfaceNodes[anchor] else {
+                return
+        }
+        
+        surface.update(anchor)
+    }
+    
+    func renderer(_ renderer: SCNSceneRenderer, didRemove node: SCNNode, for anchor: ARAnchor) {
+        guard let anchor = anchor as? ARPlaneAnchor,
+            let surface = surfaceNodes[anchor] else {
+                return
+        }
+        
+        surface.removeFromParentNode()
+        
+        surfaceNodes.removeValue(forKey: anchor)
     }
     
     private func findRectangle(frame currentFrame: ARFrame) {
@@ -83,45 +104,79 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             let request = VNDetectRectanglesRequest(completionHandler: { (request, error) in
                 // Jump back onto the main thread
                 DispatchQueue.main.async {
-                    // self.searchingForRectangles = false
                     guard let observations = request.results as? [VNRectangleObservation],
                         let _ = observations.first else {
                             print("No results")
                             return
                     }
                     
-                    print("\(observations.count) rectangles found")
-                    
-//                    if observations.count < 6 {
-//                        return
-//                    }
-                    
-                    if (self.outlineLayers != nil) {
-                        self.removeOutlines()
+                    if observations.count < 3 {
+                        return
                     }
                     
-                    // Outline rectangles
-                    var outlineLayers = [CAShapeLayer]()
+                    let isSudoku = self.checkSudoku(observations)
                     
-                    for rect in observations {
-                        let points = [rect.topLeft, rect.topRight, rect.bottomRight, rect.bottomLeft]
-                        let convertedPoints = points.map { self.sceneView.convertFromCamera($0) }
-                        let outlineLayer = self.drawPolygon(convertedPoints, color: UIColor.red)
-                        
-                        outlineLayers.append(outlineLayer)
-                        self.sceneView.layer.addSublayer(outlineLayer)
+                    if !isSudoku {
+                        return
                     }
                     
-                    self.outlineLayers = outlineLayers
+                    guard let selectedRect = observations.first else {
+                        return
+                    }
+                    
+                    self.addPlaneRect(for: selectedRect)
                 }
             })
             
             request.maximumObservations = 0
+            request.quadratureTolerance = 15
+            request.minimumAspectRatio = 0.8
             
             // Perform request
             let handler = VNImageRequestHandler(cvPixelBuffer: currentFrame.capturedImage, options: [:])
             try? handler.perform([request])
         }
+    }
+    
+    private func checkSudoku(_ observations: [VNRectangleObservation]) -> Bool {
+        guard let outerRect = observations.first else {
+            return false
+        }
+        
+        let outerHeight = abs(outerRect.topLeft.y - outerRect.bottomRight.y)
+        let outerWidth = abs(outerRect.topLeft.x - outerRect.bottomRight.x)
+        let croppedObservations = observations.dropFirst()
+        var counter = 0
+        
+        for rect in croppedObservations {
+            let height = abs(rect.topLeft.y - rect.bottomRight.y)
+            let width = abs(rect.topLeft.x - rect.bottomRight.x)
+            
+            if height < (outerHeight / 3) && width < (outerWidth / 3) &&
+                rect.topLeft.x > outerRect.topLeft.x &&
+                rect.topLeft.y < outerRect.topLeft.y &&
+                rect.bottomRight.x < outerRect.bottomRight.x &&
+                rect.bottomRight.y > outerRect.bottomRight.y {
+                counter += 1
+            }
+        }
+        
+        if counter > 2 {
+            return true
+        }
+        
+        return false
+    }
+    
+    private func addPlaneRect(for observedRect: VNRectangleObservation) {
+        // Convert to 3D coordinates
+        guard let planeRectangle = PlaneRectangle(for: observedRect, in: sceneView) else {
+            print("No plane for this rectangle")
+            return
+        }
+        
+        let rectangleNode = RectangleNode(planeRectangle)
+        sceneView.scene.rootNode.addChildNode(rectangleNode)
     }
     
     private func drawPolygon(_ points: [CGPoint], color: UIColor) -> CAShapeLayer {
@@ -141,57 +196,4 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         
         return layer
     }
-}
-
-extension UIView {
-    
-    // Converts a point from camera coordinates (0 to 1 or -1 to 0, depending on orientation)
-    // into a point within the given view
-    func convertFromCamera(_ point: CGPoint) -> CGPoint {
-        let orientation = UIApplication.shared.statusBarOrientation
-        
-        switch orientation {
-        case .portrait, .unknown:
-            return CGPoint(x: point.y * frame.width, y: point.x * frame.height)
-        case .landscapeLeft:
-            return CGPoint(x: (1 - point.x) * frame.width, y: point.y * frame.height)
-        case .landscapeRight:
-            return CGPoint(x: point.x * frame.width, y: (1 - point.y) * frame.height)
-        case .portraitUpsideDown:
-            return CGPoint(x: (1 - point.y) * frame.width, y: (1 - point.x) * frame.height)
-        }
-    }
-    
-    // Converts a rect from camera coordinates (0 to 1 or -1 to 0, depending on orientation)
-    // into a point within the given view
-    func convertFromCamera(_ rect: CGRect) -> CGRect {
-        let orientation = UIApplication.shared.statusBarOrientation
-        let x, y, w, h: CGFloat
-        
-        switch orientation {
-        case .portrait, .unknown:
-            w = rect.height
-            h = rect.width
-            x = rect.origin.y
-            y = rect.origin.x
-        case .landscapeLeft:
-            w = rect.width
-            h = rect.height
-            x = 1 - rect.origin.x - w
-            y = rect.origin.y
-        case .landscapeRight:
-            w = rect.width
-            h = rect.height
-            x = rect.origin.x
-            y = 1 - rect.origin.y - h
-        case .portraitUpsideDown:
-            w = rect.height
-            h = rect.width
-            x = 1 - rect.origin.y - w
-            y = 1 - rect.origin.x - h
-        }
-        
-        return CGRect(x: x * frame.width, y: y * frame.height, width: w * frame.width, height: h * frame.height)
-    }
-    
 }
