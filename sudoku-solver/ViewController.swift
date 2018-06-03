@@ -10,6 +10,7 @@ import UIKit
 import SceneKit
 import ARKit
 import Vision
+import CoreML
 
 class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
 
@@ -17,6 +18,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
     private var searchingForRectangles = true
     private var surfaceNodes = [ARPlaneAnchor:SurfaceNode]()
+    let model = MNIST()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -137,12 +139,57 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                         return
                     }
                     
+                    if (abs(selectedRect.topLeft.y - selectedRect.topRight.y) > 0.02) ||
+                        (abs(selectedRect.bottomLeft.y - selectedRect.bottomRight.y) > 0.02) ||
+                        (abs(selectedRect.topLeft.x - selectedRect.bottomLeft.x) > 0.02) ||
+                        (abs(selectedRect.topRight.x - selectedRect.bottomRight.x) > 0.02) {
+                        return
+                    }
+                    
                     let centerX = selectedRect.topLeft.x + (selectedRect.bottomRight.x - selectedRect.topLeft.x) / 2
                     let centerY = selectedRect.topLeft.y + (selectedRect.bottomRight.y - selectedRect.topLeft.y) / 2
                     let centerPoint = CGPoint(x: centerX, y: centerY)
                     let hitList = self.sceneView.hitTest(self.sceneView.convertFromCamera(centerPoint), options: nil)
                     
                     if hitList.count == 0 {
+//                        let plane = SCNPlane(width: 0.1, height: 0.1)
+                        let image = self.convertToUIImage(pixelBuffer: currentFrame.capturedImage, frame: currentFrame)
+
+                        let width = abs(selectedRect.topRight.y - selectedRect.bottomLeft.y) * image.size.width / 9
+                        let height = abs(selectedRect.topRight.x - selectedRect.bottomLeft.x) * image.size.height / 9
+                        let offset = max(width, height) / 10
+                        
+                        // var sudoku = [[Int64?]]()
+                        var sudoku: [[Int64?]] = Array(repeating: Array(repeating: -1, count: 9), count: 9)
+
+                        
+                        let startX = selectedRect.bottomLeft.y * image.size.width
+                        let startY = selectedRect.bottomLeft.x * image.size.height
+                        
+                        for i in 0...8 {
+                            for j in 0...8 {
+                                let boundingBox = CGRect(x: startX + (width - offset / 3.2) * CGFloat(i) + offset, y: startY + (height - offset / 2) * CGFloat(j) + offset, width: width, height: height)
+                                let croppedCGImage:CGImage = (image.cgImage?.cropping(to: boundingBox))!
+                                let croppedImage = UIImage(cgImage: croppedCGImage).noir
+                                
+                                let filter = ThresholdFilter()
+                                filter.inputImage = CIImage(image: croppedImage!, options: [kCIImageColorSpace: NSNull()])
+                                let thresholdImage = UIImage(ciImage: filter.outputImage)
+                                
+                                let resizedImage = thresholdImage.resize(to: CGSize(width: 28, height: 28))
+                                let pixelBuffer = resizedImage?.pixelBuffer()
+                                let output = try? self.model.prediction(image: pixelBuffer!)
+                                sudoku[i][j] = output?.classLabel
+                                
+                                print(i, j, sudoku[i][j] as Any)
+                            
+                                UIImageWriteToSavedPhotosAlbum(resizedImage!, nil, nil, nil);
+                                usleep(10000);
+                            }
+                        }
+                        
+                        
+
                         self.addPlaneRect(for: selectedRect)
                     }
                 }
@@ -156,6 +203,19 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
             let handler = VNImageRequestHandler(cvPixelBuffer: currentFrame.capturedImage, options: [:])
             try? handler.perform([request])
         }
+    }
+    
+    func convertToUIImage(pixelBuffer: CVPixelBuffer, frame: ARFrame) -> UIImage {
+        let orient = UIApplication.shared.statusBarOrientation
+        let viewportSize = self.sceneView.bounds.size
+        let transform = frame.displayTransform(for: orient, viewportSize: viewportSize).inverted()
+        let finalImage = CIImage(cvPixelBuffer: pixelBuffer).transformed(by: transform)
+        
+        let context:CIContext = CIContext.init(options: nil)
+        let cgImage:CGImage = context.createCGImage(finalImage, from: finalImage.extent)!
+        let image:UIImage = UIImage.init(cgImage: cgImage)
+        
+        return image
     }
     
     private func checkSudoku(_ observations: [VNRectangleObservation]) -> Bool {
@@ -218,5 +278,96 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         layer.path = path.cgPath
         
         return layer
+    }
+}
+
+extension UIImage {
+    func applying(contrast value: NSNumber) -> UIImage? {
+        guard
+            let ciImage = CIImage(image: self)?.applyingFilter("CIColorControls", parameters: [kCIInputContrastKey: value])
+            else { return nil } // Swift 3 uses withInputParameters instead of parameters
+        UIGraphicsBeginImageContextWithOptions(size, false, scale)
+        defer { UIGraphicsEndImageContext() }
+        UIImage(ciImage: ciImage).draw(in: CGRect(origin: .zero, size: size))
+        return UIGraphicsGetImageFromCurrentImageContext()
+    }
+    
+    var invert: UIImage? {
+        let context = CIContext(options: nil)
+        guard let currentFilter = CIFilter(name: "CIColorInvert") else { return nil }
+        currentFilter.setValue(CIImage(image: self), forKey: kCIInputImageKey)
+        if let output = currentFilter.outputImage,
+            let cgImage = context.createCGImage(output, from: output.extent) {
+            return UIImage(cgImage: cgImage, scale: scale, orientation: imageOrientation)
+        }
+        return nil
+    }
+    
+    var noir: UIImage? {
+        let context = CIContext(options: nil)
+        guard let currentFilter = CIFilter(name: "CIPhotoEffectNoir") else { return nil }
+        currentFilter.setValue(CIImage(image: self), forKey: kCIInputImageKey)
+        if let output = currentFilter.outputImage,
+            let cgImage = context.createCGImage(output, from: output.extent) {
+            return UIImage(cgImage: cgImage, scale: scale, orientation: imageOrientation)
+        }
+        return nil
+    }
+    
+    func resize(to newSize: CGSize) -> UIImage? {
+        guard self.size != newSize else { return self }
+        
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
+        self.draw(in: CGRect(x: 0, y: 0, width: newSize.width, height: newSize.height))
+        
+        defer { UIGraphicsEndImageContext() }
+        return UIGraphicsGetImageFromCurrentImageContext()
+    }
+    
+    func pixelBuffer() -> CVPixelBuffer? {
+        var pixelBuffer: CVPixelBuffer? = nil
+        
+        let width = Int(self.size.width)
+        let height = Int(self.size.height)
+        
+        CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_OneComponent8, nil, &pixelBuffer)
+        CVPixelBufferLockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue:0))
+        
+        let colorspace = CGColorSpaceCreateDeviceGray()
+        let bitmapContext = CGContext(data: CVPixelBufferGetBaseAddress(pixelBuffer!), width: width, height: height, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!), space: colorspace, bitmapInfo: 0)!
+        
+        guard let cg = self.cgImage else {
+            return nil
+        }
+        
+        bitmapContext.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        return pixelBuffer
+    }
+}
+
+class ThresholdFilter: CIFilter
+{
+    var inputImage : CIImage?
+    // var threshold: Float = 0.554688 // This is set to a good value via Otsu's method
+    var threshold: Float = 0.4
+    
+    var thresholdKernel =  CIColorKernel(source:
+        "kernel vec4 thresholdKernel(sampler image, float threshold) {" +
+            "  vec4 pixel = sample(image, samplerCoord(image));" +
+            "  const vec3 rgbToIntensity = vec3(0.114, 0.587, 0.299);" +
+            "  float intensity = dot(pixel.rgb, rgbToIntensity);" +
+            "  return intensity < threshold ? vec4(0, 0, 0, 1) : vec4(1, 1, 1, 1);" +
+        "}")
+    
+    override var outputImage: CIImage! {
+        guard let inputImage = inputImage,
+            let thresholdKernel = thresholdKernel else {
+                return nil
+        }
+        
+        let extent = inputImage.extent
+        let arguments : [Any] = [inputImage, threshold]
+        return thresholdKernel.apply(extent: extent, arguments: arguments)
     }
 }
