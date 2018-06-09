@@ -18,7 +18,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
     
     private var searchingForRectangles = true
     private var surfaceNodes = [ARPlaneAnchor:SurfaceNode]()
-    let model = MNIST()
+    let model = numbers()
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -179,18 +179,28 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                                 let resizedImage = thresholdImage.resize(to: CGSize(width: 28, height: 28))
                                 let pixelBuffer = resizedImage?.pixelBuffer()
                                 let output = try? self.model.prediction(image: pixelBuffer!)
-                                sudoku[i][j] = output?.classLabel
                                 
-                                print(i, j, sudoku[i][j] as Any)
-                            
-                                UIImageWriteToSavedPhotosAlbum(resizedImage!, nil, nil, nil);
-                                usleep(10000);
+                                if let _value = output?.output1[(output?.classLabel)!] {
+                                    if (_value > 0.95) {
+                                        sudoku[i][j] = output?.classLabel
+                                    } else {
+                                        sudoku[i][j] = -1
+                                    }
+                                } else {
+                                    sudoku[i][j] = -1
+                                }
+                                
+
+//                                print(i, j, sudoku[i][j] as Any, output?.output1[(output?.classLabel)!])
+//                            
+//                                UIImageWriteToSavedPhotosAlbum(resizedImage!, nil, nil, nil);
+//                                usleep(10000);
                             }
                         }
                         
                         
 
-                        self.addPlaneRect(for: selectedRect)
+                        self.addPlaneRect(for: selectedRect, sudoku: sudoku)
                     }
                 }
             })
@@ -248,7 +258,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         return false
     }
     
-    private func addPlaneRect(for observedRect: VNRectangleObservation) {
+    private func addPlaneRect(for observedRect: VNRectangleObservation, sudoku: [[Int64?]]) {
         // Convert to 3D coordinates
         guard let planeRectangle = PlaneRectangle(for: observedRect, in: sceneView) else {
             return
@@ -259,7 +269,7 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         let y = boardNode.position.y
         let z = boardNode.position.z
         
-        let _ = SudokuScene(sceneView.scene, boardNode, planeRectangle.size, planeRectangle.orientation, x, y, z)
+        let _ = SudokuScene(sceneView.scene, boardNode, planeRectangle.size, planeRectangle.orientation, x, y, z, sudoku)
     }
     
     private func drawPolygon(_ points: [CGPoint], color: UIColor) -> CAShapeLayer {
@@ -325,23 +335,48 @@ extension UIImage {
     }
     
     func pixelBuffer() -> CVPixelBuffer? {
-        var pixelBuffer: CVPixelBuffer? = nil
-        
-        let width = Int(self.size.width)
-        let height = Int(self.size.height)
-        
-        CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_OneComponent8, nil, &pixelBuffer)
-        CVPixelBufferLockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue:0))
-        
-        let colorspace = CGColorSpaceCreateDeviceGray()
-        let bitmapContext = CGContext(data: CVPixelBufferGetBaseAddress(pixelBuffer!), width: width, height: height, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!), space: colorspace, bitmapInfo: 0)!
-        
-        guard let cg = self.cgImage else {
+        let attrs = [kCVPixelBufferCGImageCompatibilityKey: kCFBooleanTrue, kCVPixelBufferCGBitmapContextCompatibilityKey: kCFBooleanTrue] as CFDictionary
+        var pixelBuffer : CVPixelBuffer?
+        let status = CVPixelBufferCreate(kCFAllocatorDefault, Int(self.size.width), Int(self.size.height), kCVPixelFormatType_32ARGB, attrs, &pixelBuffer)
+        guard (status == kCVReturnSuccess) else {
             return nil
         }
         
-        bitmapContext.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+        CVPixelBufferLockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
+        let pixelData = CVPixelBufferGetBaseAddress(pixelBuffer!)
         
+        let rgbColorSpace = CGColorSpaceCreateDeviceRGB()
+        let context = CGContext(data: pixelData, width: Int(self.size.width), height: Int(self.size.height), bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!), space: rgbColorSpace, bitmapInfo: CGImageAlphaInfo.noneSkipFirst.rawValue)
+        
+        context?.translateBy(x: 0, y: self.size.height)
+        context?.scaleBy(x: 1.0, y: -1.0)
+        
+        UIGraphicsPushContext(context!)
+        self.draw(in: CGRect(x: 0, y: 0, width: self.size.width, height: self.size.height))
+        UIGraphicsPopContext()
+        CVPixelBufferUnlockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue: 0))
+        
+        return pixelBuffer
+    }
+    
+    func pixelBuffer2() -> CVPixelBuffer? {
+                var pixelBuffer: CVPixelBuffer? = nil
+        
+                let width = Int(self.size.width)
+                let height = Int(self.size.height)
+        
+                CVPixelBufferCreate(kCFAllocatorDefault, width, height, kCVPixelFormatType_OneComponent8, nil, &pixelBuffer)
+                CVPixelBufferLockBaseAddress(pixelBuffer!, CVPixelBufferLockFlags(rawValue:0))
+ 
+               let colorspace = CGColorSpaceCreateDeviceGray()
+                let bitmapContext = CGContext(data: CVPixelBufferGetBaseAddress(pixelBuffer!), width: width, height: height, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(pixelBuffer!), space: colorspace, bitmapInfo: 0)!
+
+        
+              guard let cg = self.cgImage else {
+                    return nil
+                   }
+                bitmapContext.draw(cg, in: CGRect(x: 0, y: 0, width: width, height: height))
+
         return pixelBuffer
     }
 }

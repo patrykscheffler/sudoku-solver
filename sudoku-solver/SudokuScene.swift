@@ -17,13 +17,14 @@ class SudokuScene {
     private let orientation: Float
     private let scene: SCNScene
     private let size: CGSize
+    private let sudoku: [[Int64?]]
     private let x: Float
     private let y: Float
     private let z: Float
     
     private var board: SCNNode!
     
-    init(_ scene: SCNScene, _ board: SCNNode, _ size: CGSize, _ orientation: Float, _ x: Float, _ y: Float, _ z: Float) {
+    init(_ scene: SCNScene, _ board: SCNNode, _ size: CGSize, _ orientation: Float, _ x: Float, _ y: Float, _ z: Float, _ sudoku: [[Int64?]]) {
         self.orientation = orientation
         self.scene = scene
         self.board = board
@@ -31,6 +32,7 @@ class SudokuScene {
         self.x = x
         self.y = y
         self.z = z
+        self.sudoku = sudoku
         
         createBoard()
         showBoard()
@@ -63,11 +65,21 @@ class SudokuScene {
         let width = self.size.width
         let height = self.size.height
         let length = max(width, height)
-        
+        var value = ""
         
         for i in 0...8 {
             for j in 0...8 {
-                addNumber(to: self.board, value: "\(arc4random_uniform(UInt32(10)))", Float(i), Float(j), Float(length / 9))
+                if let _sudoku = self.sudoku[i][j] {
+                    if (_sudoku == -1) {
+                        value = ""
+                    } else {
+                        value = String(_sudoku)
+                    }
+                } else {
+                    value = ""
+                }
+                
+                addNumber(to: self.board, value: value, Float(i), Float(j), Float(length / 9))
             }
         }
     }

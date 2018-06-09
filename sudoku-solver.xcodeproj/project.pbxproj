@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		274C656E20CC7EAE00D0686B /* numbers1.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 274C656D20CC7EAE00D0686B /* numbers1.mlmodel */; };
+		274C657020CC8CA700D0686B /* numbers.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 274C656F20CC8CA700D0686B /* numbers.mlmodel */; };
 		2796098520C350BB008C6665 /* MNIST.mlmodel in Sources */ = {isa = PBXBuildFile; fileRef = 2796098420C34FA3008C6665 /* MNIST.mlmodel */; };
 		27DC44F8209C917400D346A9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27DC44F7209C917400D346A9 /* AppDelegate.swift */; };
 		27DC44FA209C917400D346A9 /* art.scnassets in Resources */ = {isa = PBXBuildFile; fileRef = 27DC44F9209C917400D346A9 /* art.scnassets */; };
@@ -25,6 +27,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		274C656D20CC7EAE00D0686B /* numbers1.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; name = numbers1.mlmodel; path = "../../digit-recognition/numbers1.mlmodel"; sourceTree = "<group>"; };
+		274C656F20CC8CA700D0686B /* numbers.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; name = numbers.mlmodel; path = "../../digit-recognition/numbers.mlmodel"; sourceTree = "<group>"; };
 		2796098420C34FA3008C6665 /* MNIST.mlmodel */ = {isa = PBXFileReference; lastKnownFileType = file.mlmodel; path = MNIST.mlmodel; sourceTree = "<group>"; };
 		27DC44F4209C917400D346A9 /* sudoku-solver.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "sudoku-solver.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		27DC44F7209C917400D346A9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -74,6 +78,8 @@
 		27DC44F6209C917400D346A9 /* sudoku-solver */ = {
 			isa = PBXGroup;
 			children = (
+				274C656F20CC8CA700D0686B /* numbers.mlmodel */,
+				274C656D20CC7EAE00D0686B /* numbers1.mlmodel */,
 				2796098420C34FA3008C6665 /* MNIST.mlmodel */,
 				27DC451A209D9A1200D346A9 /* Nodes */,
 				27DC4511209D98A800D346A9 /* Extensions */,
@@ -184,6 +190,7 @@
 			files = (
 				27DC44FC209C917400D346A9 /* ViewController.swift in Sources */,
 				27DC450E209D054500D346A9 /* RectangleNode.swift in Sources */,
+				274C657020CC8CA700D0686B /* numbers.mlmodel in Sources */,
 				27DC44F8209C917400D346A9 /* AppDelegate.swift in Sources */,
 				27DC4513209D991000D346A9 /* ARHitTestResult.swift in Sources */,
 				2796098520C350BB008C6665 /* MNIST.mlmodel in Sources */,
@@ -191,6 +198,7 @@
 				27DC451C209DAE9B00D346A9 /* SudokuScene.swift in Sources */,
 				27DC4510209D0D7A00D346A9 /* SurfaceNode.swift in Sources */,
 				27DC4515209D995200D346A9 /* SCNVector3.swift in Sources */,
+				274C656E20CC7EAE00D0686B /* numbers1.mlmodel in Sources */,
 				27DC4519209D99D600D346A9 /* UIView.swift in Sources */,
 				27DC4517209D999300D346A9 /* Collection.swift in Sources */,
 			);
