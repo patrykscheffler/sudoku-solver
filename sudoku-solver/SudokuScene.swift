@@ -13,18 +13,20 @@ class SudokuScene {
     private static let borderColor = UIColor(red:0.4, green:0.4, blue:0.4, alpha:1)
     private static let lightBorderColor = UIColor(red:0.7, green:0.7, blue:0.7, alpha:1)
     private static let textColor = UIColor(red:0.30, green:0.85, blue:0.39, alpha:1.0)
+    private static let solutionTextColor = UIColor(red:0.0, green:0.0, blue:0.0, alpha:1.0)
     
     private let orientation: Float
     private let scene: SCNScene
     private let size: CGSize
     private let sudoku: [[Int64?]]
+    private let solution: Sudoku
     private let x: Float
     private let y: Float
     private let z: Float
     
     private var board: SCNNode!
     
-    init(_ scene: SCNScene, _ board: SCNNode, _ size: CGSize, _ orientation: Float, _ x: Float, _ y: Float, _ z: Float, _ sudoku: [[Int64?]]) {
+    init(_ scene: SCNScene, _ board: SCNNode, _ size: CGSize, _ orientation: Float, _ x: Float, _ y: Float, _ z: Float, _ sudoku: [[Int64?]], _ solution: Sudoku) {
         self.orientation = orientation
         self.scene = scene
         self.board = board
@@ -33,6 +35,7 @@ class SudokuScene {
         self.y = y
         self.z = z
         self.sudoku = sudoku
+        self.solution = solution
         
         createBoard()
         showBoard()
@@ -71,27 +74,30 @@ class SudokuScene {
             for j in 0...8 {
                 if let _sudoku = self.sudoku[i][j] {
                     if (_sudoku == -1) {
-                        value = ""
+                        value = String(self.solution[i][j].returnValue())
+                        value = value == "-1" ? "" : value
+                        addNumber(to: self.board, value: value, Float(i), Float(j), Float(length / 9), true)
                     } else {
                         value = String(_sudoku)
+                        addNumber(to: self.board, value: value, Float(i), Float(j), Float(length / 9), false)
                     }
                 } else {
                     value = ""
                 }
                 
-                addNumber(to: self.board, value: value, Float(i), Float(j), Float(length / 9))
+                
             }
         }
     }
     
-    private func addNumber(to node: SCNNode, value: String, _ x: Float, _ y: Float, _ cell: Float) {
+    private func addNumber(to node: SCNNode, value: String, _ x: Float, _ y: Float, _ cell: Float, _ isSolution: Bool) {
         var translate = SCNMatrix4MakeTranslation(cell * (x - 4.5), cell * (8 - y - 4.5), 0)
         translate = SCNMatrix4Translate(translate, cell / 3, cell / 9, 0)
         let scale = SCNMatrix4Scale(translate, cell / 30, cell / 30, cell / 30)
         var transform = SCNMatrix4MakeRotation(-Float.pi / 2.0, 1.0, 0.0, 0.0)
         transform = SCNMatrix4Rotate(transform, self.orientation, 0, 1, 0)
         transform = SCNMatrix4Rotate(transform, Float.pi / 2.0, 0, 3, 0)
-        let node = createNode(text(value), SCNMatrix4Mult(scale, transform), SudokuScene.textColor)
+        let node = createNode(text(value), SCNMatrix4Mult(scale, transform), isSolution ? SudokuScene.solutionTextColor : SudokuScene.textColor)
         animate(node, "opacity", from: 0, to: 1, during: 2)
         self.board.addChildNode(node)
     }

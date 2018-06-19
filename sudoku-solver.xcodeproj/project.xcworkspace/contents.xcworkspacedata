@@ -2,6 +2,9 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "self:sudoku-solver.xcodeproj">
+      location = "group:../../../../Desktop/numbers.mlmodel">
+   </FileRef>
+   <FileRef
+      location = "self:">
    </FileRef>
 </Workspace>

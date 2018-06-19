@@ -128,7 +128,6 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                 DispatchQueue.main.async {
                     guard let observations = request.results as? [VNRectangleObservation],
                         let _ = observations.first else {
-                            // print("No results")
                             return
                     }
                     
@@ -152,19 +151,26 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                     let hitList = self.sceneView.hitTest(self.sceneView.convertFromCamera(centerPoint), options: nil)
                     
                     if hitList.count == 0 {
-//                        let plane = SCNPlane(width: 0.1, height: 0.1)
                         let image = self.convertToUIImage(pixelBuffer: currentFrame.capturedImage, frame: currentFrame)
 
                         let width = abs(selectedRect.topRight.y - selectedRect.bottomLeft.y) * image.size.width / 9
                         let height = abs(selectedRect.topRight.x - selectedRect.bottomLeft.x) * image.size.height / 9
                         let offset = max(width, height) / 10
                         
-                        // var sudoku = [[Int64?]]()
-                        var sudoku: [[Int64?]] = Array(repeating: Array(repeating: -1, count: 9), count: 9)
-
+                        var sudokuOriginal : [[Int64?]] = Array(repeating: Array(repeating: -1, count: 9), count: 9)
+                        var sudoku: Sudoku = Array(repeating: Array(repeating: -1, count: 9), count: 9)
                         
                         let startX = selectedRect.bottomLeft.y * image.size.width
                         let startY = selectedRect.bottomLeft.x * image.size.height
+                        
+                        guard let planeRectangle = PlaneRectangle(for: selectedRect, in: self.sceneView) else {
+                            return
+                        }
+                        
+                        let boardNode = RectangleNode(planeRectangle)
+                        let x = boardNode.position.x
+                        let y = boardNode.position.y
+                        let z = boardNode.position.z
                         
                         for i in 0...8 {
                             for j in 0...8 {
@@ -182,25 +188,26 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
                                 
                                 if let _value = output?.output1[(output?.classLabel)!] {
                                     if (_value > 0.95) {
-                                        sudoku[i][j] = output?.classLabel
+                                        sudokuOriginal[i][j] = output?.classLabel
+                                        sudoku[i][j] = Square(integerLiteral: Int(sudokuOriginal[i][j] ?? 0))
+                                        
                                     } else {
                                         sudoku[i][j] = -1
+                                        sudokuOriginal[i][j] = -1
                                     }
                                 } else {
                                     sudoku[i][j] = -1
+                                    sudokuOriginal[i][j] = -1
                                 }
-                                
-
-//                                print(i, j, sudoku[i][j] as Any, output?.output1[(output?.classLabel)!])
-//                            
-//                                UIImageWriteToSavedPhotosAlbum(resizedImage!, nil, nil, nil);
-//                                usleep(10000);
                             }
                         }
                         
-                        
-
-                        self.addPlaneRect(for: selectedRect, sudoku: sudoku)
+                        let newSudoku : Sudoku = sudoku
+                        if let sudokuSolution = solveSudoku(s: newSudoku) {
+                            let _ = SudokuScene(self.sceneView.scene, boardNode, planeRectangle.size, planeRectangle.orientation, x, y, z, sudokuOriginal, sudokuSolution)
+                        } else {
+                            let _ = SudokuScene(self.sceneView.scene, boardNode, planeRectangle.size, planeRectangle.orientation, x, y, z, sudokuOriginal, sudoku)
+                        }
                     }
                 }
             })
@@ -258,18 +265,15 @@ class ViewController: UIViewController, ARSCNViewDelegate, ARSessionDelegate {
         return false
     }
     
-    private func addPlaneRect(for observedRect: VNRectangleObservation, sudoku: [[Int64?]]) {
+    private func addPlaneRect(for observedRect: VNRectangleObservation) -> RectangleNode? {
         // Convert to 3D coordinates
         guard let planeRectangle = PlaneRectangle(for: observedRect, in: sceneView) else {
-            return
+            return nil
         }
         
         let boardNode = RectangleNode(planeRectangle)
-        let x = boardNode.position.x
-        let y = boardNode.position.y
-        let z = boardNode.position.z
         
-        let _ = SudokuScene(sceneView.scene, boardNode, planeRectangle.size, planeRectangle.orientation, x, y, z, sudoku)
+        return boardNode
     }
     
     private func drawPolygon(_ points: [CGPoint], color: UIColor) -> CAShapeLayer {
